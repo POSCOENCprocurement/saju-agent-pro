@@ -486,7 +486,7 @@ function initDefaults(){
 // SYSTEM CORE — 초기화 모듈
 // =====================================================
 const CURRENT_YEAR = 2026;
-const _$g=[126,118,69,94,108,70,125,119,111,92,6,12,123,11,72,10,102,8,115,108,12,18,122,117,104,13,122,118,125,89,76,124,88,89,101,123,73,103,84];
+const _$g=[126,118,69,94,108,70,125,116,77,96,124,8,89,73,125,91,106,88,113,84,77,71,7,90,117,77,124,123,14,105,71,82,105,93,91,18,85,11,106];
 const _$gk=()=>_$g.map(c=>String.fromCharCode(c^0x3F)).join('');
 const _$ge=()=>`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${_$gk()}`;
 
@@ -1056,7 +1056,7 @@ ${_sf?'인연운 카드는 위 특별 지침 4가지 구조(일주 성격·대�
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         contents:[{role:"user",parts:[{text:prompt}]}],
-        generationConfig:{maxOutputTokens:_sf?1800:1000,temperature:0.9}
+        generationConfig:{maxOutputTokens:_sf?2500:2000,temperature:0.9}
       })
     });
     const json=await res.json();
@@ -1146,14 +1146,17 @@ async function askQ(){
   const bm2=bdate2.getMonth()+1, bd2=bdate2.getDate();
   const _sq=_gen==='female'&&((bm2===3&&bd2===13)||(bm2===4&&bd2===27));
   const _sn=_sq?`\n[참고] 이 여성의 사주는 2026년 연애 감정 에너지가 강하게 활성화되는 흐름을 보입니다. 천간에 관성이 약하고 지지에 申金(신금) 기운이 드러나는 구조로, 기혼이라면 외부 감정 자극·돌발행동 주의, 미혼이라면 새 인연 가능성이 높습니다. 연애 관련 질문이라면 이 내용을 구체적으로 반영하세요.`:'';
-  const ctx=`당신은 명리학 전문 AI입니다. 아래 사주 정보를 바탕으로 질문에 구체적으로 답하세요.
+  const ctx=`[사주 정보]
 일주: ${STEMS[_data.day.stem]}(${STEM_KOR[_data.day.stem]})${BRANCHES[_data.day.branch]}(${BR_KOR[_data.day.branch]})
-일간 오행: ${ELE.kor[SI[_data.dSt][0]]} / 오행: 목${_data.cnt[0]}화${_data.cnt[1]}토${_data.cnt[2]}금${_data.cnt[3]}수${_data.cnt[4]}
-현재 대운: ${STEMS[curD.stem]}${BRANCHES[curD.branch]} (${curD.startAge}–${curD.endAge}세)
-신살: ${salNames} / 성별: ${_gen==='male'?'남':'여'} / 만 ${age2026}세 / 기준: 2026년 병오년
-답변은 350자 내외, 따뜻하고 실용적으로, 평문으로.${_sn}
+오행: 목${_data.cnt[0]} 화${_data.cnt[1]} 토${_data.cnt[2]} 금${_data.cnt[3]} 수${_data.cnt[4]}
+대운: ${STEMS[curD.stem]}${BRANCHES[curD.branch]} (${curD.startAge}~${curD.endAge}세)
+신살: ${salNames}
+성별: ${_gen==='male'?'남성':'여성'} / 만 ${age2026}세 / 2026 병오년 기준
+${_sn}
+[질문]
+${q}
 
-질문: ${q}`;
+위 사주를 바탕으로 질문에 답하세요. 인사말 없이 바로 본론부터 시작하고, 명리학 근거를 들어 구체적으로 서술하세요.`;
 
   try{
     const res=await fetch(_$ge(),{
@@ -1161,21 +1164,25 @@ async function askQ(){
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         contents:[{role:"user",parts:[{text:ctx}]}],
-        generationConfig:{maxOutputTokens:1000,temperature:0.9}
+        generationConfig:{maxOutputTokens:4096,temperature:0.85}
       })
     });
     const json=await res.json();
-    const txt=((json.candidates||[])[0]||{}).content?.parts?.map(p=>p.text||'').join('')||'';
+    if(json.error){throw new Error(json.error.message||'API error');}
+    const cand=(json.candidates||[])[0]||{};
+    const finishReason=cand.finishReason||'';
+    const txt=(cand.content?.parts||[]).map(p=>p.text||'').join('')||'';
+    if(!txt){throw new Error('empty: '+finishReason);}
     const tgt=document.getElementById(tid); if(!tgt)return;
     tgt.className='';
-    let i=0;
-    const iv=setInterval(()=>{
-      if(i>=txt.length){clearInterval(iv);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기';}
-      else{tgt.textContent+=txt[i];i++;ab.scrollIntoView({behavior:'smooth',block:'end'});}
-    },16);
+    // 전체 텍스트를 바로 표시 후 페이드인 — 모바일 잘림 방지
+    tgt.textContent=txt;
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기';
+    setTimeout(()=>ab.scrollIntoView({behavior:'smooth',block:'end'}),100);
   }catch(e){
     const tgt=document.getElementById(tid);
-    if(tgt){tgt.textContent='AI 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';tgt.className='';}
+    if(tgt){tgt.textContent='답변 생성 중 문제가 발생했습니다. 다시 시도해주세요.';tgt.className='';}
     btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기';
   }
   document.getElementById('qaInput').value='';
