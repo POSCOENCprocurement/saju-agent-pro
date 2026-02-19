@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 명리 에이전트 Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<!--
+  ╔═══════════════════════════════════════════════════╗
+  ║          GOOGLE SHEETS 연동 설정 안내               ║
+  ╠═══════════════════════════════════════════════════╣
+  ║ 1. Google Sheets 문서 생성                          ║
+  ║ 2. 확장 프로그램 > Apps Script 클릭                  ║
+  ║ 3. 아래 코드를 붙여넣기 후 저장                       ║
+  ║ 4. 배포 > 새 배포 > 웹 앱 선택                       ║
+  ║ 5. 액세스: 모든 사용자 (익명) 설정                    ║
+  ║ 6. 배포 URL을 SHEETS_WEBHOOK_URL에 붙여넣기           ║
+  ╠═══════════════════════════════════════════════════╣
+  ║ Apps Script 코드:                                  ║
+  ║                                                   ║
+  ║ function doPost(e) {                               ║
+  ║   const ss = SpreadsheetApp.getActiveSpreadsheet();║
+  ║   const sheet = ss.getActiveSheet();               ║
+  ║   const d = JSON.parse(e.postData.contents);       ║
+  ║   if (!sheet.getLastRow()) {                       ║
+  ║     sheet.appendRow(['시각','이름','생년월일','시간', ║
+  ║       '성별','일주','질문내용','IP']);               ║
+  ║   }                                               ║
+  ║   sheet.appendRow([                                ║
+  ║     new Date().toLocaleString('ko-KR'),            ║
+  ║     d.name, d.birthDate, d.birthTime,              ║
+  ║     d.gender, d.dayPillar, d.question||'', d.ua    ║
+  ║   ]);                                              ║
+  ║   return ContentService                            ║
+  ║     .createTextOutput(JSON.stringify({ok:true}))   ║
+  ║     .setMimeType(ContentService.MimeType.JSON);    ║
+  ║ }                                                  ║
+  ╚═══════════════════════════════════════════════════╝
+-->
+
+<style>
+:root {
+  --bg:     #0b0c18;
+  --bg2:    #11132a;
+  --bg3:    #181b35;
+  --card:   #1c2040;
+  --card2:  #222648;
+  --gold:   #c9a84c;
+  --gold2:  #e8c97a;
+  --goldf:  rgba(201,168,76,0.10);
+  --goldb:  rgba(201,168,76,0.25);
+  --text:   #eaebf8;
+  --text2:  #9ba3cc;
+  --text3:  #545a88;
+  --border: rgba(255,255,255,0.07);
+  --r:      16px;
+  --red:    #e06060;
+  --green:  #5abf85;
+  --blue:   #5e9cf5;
+  --purple: #9b7ce8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Noto Serif KR',serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* Background */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 10%, rgba(80,60,180,0.12) 0%,transparent 70%),
+    radial-gradient(ellipse 40% 40% at 85% 85%, rgba(201,168,76,0.07) 0%,transparent 60%);
+  pointer-events:none;z-index:0
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events:none;z-index:0
+}
+
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(11,12,24,0.9);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+}
+.hdr{max-width:520px;margin:0 auto;padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#c9a84c,#6b4fc8);display:flex;align-items:center;justify-content:center;font-size:17px}
+.logo-txt{font-family:'Nanum Myeongjo',serif;font-size:17px;font-weight:800;background:linear-gradient(90deg,var(--gold2),#a78fe8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.reset-btn{display:none;font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:20px;cursor:pointer;padding:5px 12px;transition:all .2s;font-family:inherit}
+.reset-btn:hover{color:var(--gold);border-color:var(--goldb)}
+
+main{max-width:520px;margin:0 auto;padding:0 1rem 100px;position:relative;z-index:1}
+
+/* === INPUT === */
+.input-section{margin-top:22px}
+.hero{text-align:center;padding:28px 0 20px}
+.hero h2{font-family:'Nanum Myeongjo',serif;font-size:27px;font-weight:800;line-height:1.4}
+.hero p{color:var(--text3);font-size:13px;margin-top:8px}
+.gold{color:var(--gold)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.8px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:7px}
+label.fl{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:500}
+input[type=text],input[type=date],input[type=time],textarea,select{
+  width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:11px;
+  color:var(--text);font-family:'Noto Serif KR',serif;font-size:15px;padding:11px 13px;
+  outline:none;transition:border-color .2s,box-shadow .2s;color-scheme:dark
+}
+input:focus,textarea:focus{border-color:var(--goldb);box-shadow:0 0 0 3px rgba(201,168,76,.07)}
+textarea{resize:none;min-height:75px;line-height:1.6}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.gender-grp{display:flex;gap:9px}
+.gr{display:none}
+.gl{flex:1;text-align:center;padding:10px;border-radius:11px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:14px;cursor:pointer;transition:all .2s;font-family:inherit}
+.gr:checked+.gl{border-color:var(--gold);background:var(--goldf);color:var(--gold2);font-weight:600}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;color:var(--text2);background:var(--bg3);transition:all .18s;font-family:inherit}
+.chip:hover,.chip.on{border-color:var(--gold);background:var(--goldf);color:var(--gold2)}
+
+.go-btn{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,#c9a84c,#8a6020);
+  color:#110900;font-family:'Nanum Myeongjo',serif;font-size:17px;font-weight:800;
+  border:none;border-radius:13px;cursor:pointer;transition:opacity .2s,transform .1s;
+  box-shadow:0 4px 24px rgba(201,168,76,.28);letter-spacing:.3px;margin-top:4px
+}
+.go-btn:hover{opacity:.9}.go-btn:active{transform:scale(.98)}
+
+/* === LOADING === */
+#loadingView{display:none;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center}
+.ldr{width:56px;height:56px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--gold);animation:spin 1s linear infinite;margin-bottom:20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lt{color:var(--text2);font-size:14px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.ls{color:var(--text3);font-size:12px;margin-top:5px}
+
+/* === RESULT === */
+#resultDashboard{display:none}
+.rhdr{text-align:center;padding:24px 0 0}
+.rname{font-family:'Nanum Myeongjo',serif;font-size:22px;font-weight:800}
+.rmeta{color:var(--text3);font-size:12px;margin-top:5px}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:var(--card);border-radius:13px;padding:4px;margin:18px 0 14px}
+.tb{flex:1;padding:8px 4px;border:none;background:none;border-radius:10px;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;line-height:1.3}
+.tb.on{background:var(--card2);color:var(--gold2)}
+.tp{display:none}.tp.on{display:block}
+
+/* === PILLARS TABLE === */
+.pillars-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pillars-table{width:100%;border-collapse:separate;border-spacing:6px}
+.pillars-table th{font-size:11px;color:var(--text3);font-weight:500;padding:4px 0;text-align:center}
+.pcell{
+  text-align:center;border-radius:12px;padding:10px 4px 8px;cursor:default;
+  position:relative;transition:transform .15s
+}
+.pcell:hover{transform:scale(1.04)}
+.pcell .hanja{font-family:'Nanum Myeongjo',serif;font-size:28px;font-weight:700;display:block;line-height:1}
+.pcell .hangul{font-size:11px;color:rgba(255,255,255,.55);margin-top:3px;display:block;letter-spacing:.5px}
+.pcell.day-hl{box-shadow:0 0 0 2px var(--gold),0 0 16px rgba(201,168,76,.25)}
+.tengod{font-size:10px;padding:3px 0 0;display:block;color:var(--text3)}
+.tengod.me{color:var(--gold);font-weight:700}
+
+/* Element pill-pills */
+.ele-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;margin:2px}
+.ele-w{background:rgba(80,180,120,.15);color:#5abf85;border:1px solid rgba(80,180,120,.25)}
+.ele-f{background:rgba(220,90,90,.15);color:#e07070;border:1px solid rgba(220,90,90,.25)}
+.ele-e{background:rgba(200,160,50,.15);color:#d4a843;border:1px solid rgba(200,160,50,.25)}
+.ele-m{background:rgba(140,160,190,.15);color:#94a3b8;border:1px solid rgba(140,160,190,.25)}
+.ele-wa{background:rgba(80,140,240,.15);color:#60a5fa;border:1px solid rgba(80,140,240,.25)}
+
+/* Cell BGs by element */
+.bg-w{background:linear-gradient(160deg,#1e4a30,#0f2e1c)}
+.bg-f{background:linear-gradient(160deg,#5a1515,#3a0808)}
+.bg-e{background:linear-gradient(160deg,#5a4200,#3d2d00)}
+.bg-m{background:linear-gradient(160deg,#2a3547,#16202e)}
+.bg-wa{background:linear-gradient(160deg,#0f2a5a,#061536)}
+
+/* Element bar chart */
+.ebar{margin-bottom:9px}
+.ebar-hdr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.ebar-track{height:5px;background:var(--bg3);border-radius:10px;overflow:hidden}
+.ebar-fill{height:100%;border-radius:10px;transition:width 1.2s cubic-bezier(.25,.46,.45,.94)}
+.bw{background:linear-gradient(90deg,#5abf85,#1e4a30)}
+.bf{background:linear-gradient(90deg,#e07070,#5a1515)}
+.be{background:linear-gradient(90deg,#d4a843,#5a4200)}
+.bm{background:linear-gradient(90deg,#94a3b8,#2a3547)}
+.bwa{background:linear-gradient(90deg,#60a5fa,#0f2a5a)}
+
+/* Shinssal */
+.sal-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;padding:5px 11px;border-radius:20px;
+  cursor:pointer;margin:3px;transition:all .18s;font-weight:600;
+  border:1px solid transparent
+}
+.sal-gil{background:rgba(201,168,76,.12);color:var(--gold2);border-color:rgba(201,168,76,.3)}
+.sal-sal{background:rgba(220,90,90,.12);color:#e8807a;border-color:rgba(220,90,90,.3)}
+.sal-mix{background:rgba(140,160,240,.12);color:#a0b4f5;border-color:rgba(140,160,240,.3)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.modal-overlay.on{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:360px;width:100%;animation:modalIn .25s ease}
+@keyframes modalIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-title{font-family:'Nanum Myeongjo',serif;font-size:18px;font-weight:800;margin-bottom:10px}
+.modal-close{float:right;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1}
+
+/* Daeun / Seun / Wolun */
+.daeun-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.daeun-row{display:flex;gap:7px;min-width:max-content}
+.daeun-card{
+  width:90px;border-radius:13px;border:1px solid var(--border);
+  background:var(--bg3);padding:10px 7px;text-align:center;flex-shrink:0;
+  transition:all .2s;cursor:default
+}
+.daeun-card.current{border-color:var(--gold);background:var(--goldf);box-shadow:0 0 12px rgba(201,168,76,.2)}
+.daeun-age{font-size:11px;color:var(--text3);margin-bottom:5px}
+.daeun-pillar{display:flex;gap:4px;justify-content:center;margin-bottom:5px}
+.dp-cell{width:34px;height:38px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dp-hanja{font-family:'Nanum Myeongjo',serif;font-size:16px;font-weight:700}
+.dp-hangul{font-size:8px;color:rgba(255,255,255,.5);margin-top:1px}
+
+.seun-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.seun-card{border-radius:11px;border:1px solid var(--border);background:var(--bg3);padding:8px 4px;text-align:center}
+.seun-card.cur{border-color:var(--gold);background:var(--goldf)}
+.seun-year{font-size:10px;color:var(--text3);margin-bottom:4px}
+
+.wolun-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.wolun-card{border-radius:10px;border:1px solid var(--border);background:var(--bg3);padding:7px 4px;text-align:center}
+.month-label{font-size:9px;color:var(--text3);margin-bottom:3px}
+
+/* AI Cards */
+.ai-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:11px;border-left:3px solid var(--gold);opacity:0;transform:translateY(12px);animation:sup .5s ease forwards}
+@keyframes sup{to{opacity:1;transform:translateY(0)}}
+.ai-card-title{font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.ai-card p{font-size:13px;color:var(--text2);line-height:1.8;word-break:keep-all}
+.ai-card strong{color:var(--text);font-weight:600}
+
+/* Q&A */
+.ask-btn{
+  width:100%;padding:12px;
+  background:var(--card2);border:1px solid var(--goldb);border-radius:12px;
+  color:var(--gold);font-family:inherit;font-size:14px;font-weight:600;
+  cursor:pointer;margin-top:10px;transition:all .2s
+}
+.ask-btn:hover{background:var(--goldf)}.ask-btn:disabled{opacity:.4;cursor:not-allowed}
+.q-bubble{background:var(--card2);border:1px solid var(--border);border-radius:12px 12px 4px 12px;padding:11px 14px;margin-bottom:9px;font-size:13px;color:var(--text2);text-align:right}
+.q-label{color:var(--text3);font-size:10px;display:block;margin-bottom:4px}
+.a-bubble{background:var(--bg3);border:1px solid var(--border);border-radius:4px 12px 12px 12px;padding:14px;margin-bottom:12px;font-size:13px;color:var(--text2);line-height:1.8;word-break:keep-all;display:none}
+.a-label{color:var(--gold);font-size:10px;display:block;margin-bottom:6px}
+
+/* Section label */
+.sec-lbl{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Explanation rows */
+.explain-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
+.explain-row:last-child{border-bottom:none}
+.explain-icon{font-size:18px;flex-shrink:0;margin-top:2px}
+.explain-body{}
+.explain-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.explain-desc{font-size:12px;color:var(--text2);line-height:1.65;word-break:keep-all}
+
+/* Streaming cursor */
+.cur::after{content:'▋';animation:blink .7s step-end infinite;color:var(--gold)}
+@keyframes blink{50%{opacity:0}}
+
+/* Utility */
+.fade-in{animation:fi .6s ease forwards}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600}
+.badge-g{background:var(--goldf);color:var(--gold2);border:1px solid var(--goldb)}
+.badge-b{background:rgba(100,130,240,.12);color:#8fa8f5;border:1px solid rgba(100,130,240,.25)}
+.mt8{margin-top:8px}.mb12{margin-bottom:12px}
+.txt-sm{font-size:12px;color:var(--text2);line-height:1.7;word-break:keep-all}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.strength-pair{display:flex;gap:16px;padding:12px 0 4px;justify-content:center}
+.str-item{text-align:center}
+.str-val{font-family:'Nanum Myeongjo',serif;font-size:22px;font-weight:700}
+.str-lbl{font-size:10px;color:var(--text3);margin-top:2px}
+.sep{width:1px;background:var(--border);align-self:stretch}
+</style>
+</head>
+<body onload="initDefaults()">
+
+<header>
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-icon">☯</div>
+    <span class="logo-txt">AI 명리 에이전트 Pro</span>
+  </div>
+  <div class="hdr-right">
+    <button class="reset-btn" id="resetBtn" onclick="resetAll()">↩ 다시 입력</button>
+  </div>
+</div>
+</header>
+
+<main>
+<!-- INPUT -->
+<div class="input-section" id="inputSection">
+  <div class="hero">
+    <h2>천명(天命)을 <span class="gold">읽다</span></h2>
+    <p>사주팔자 · 신살 · 대운세운 AI 정밀 분석</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="fas fa-user"></i> 기본 정보</div>
+    <div style="margin-bottom:13px">
+      <label class="fl">이름</label>
+      <input type="text" id="userName" placeholder="이름을 입력하세요">
+    </div>
+    <div class="g2" style="margin-bottom:13px">
+      <div><label class="fl">생년월일</label><input type="date" id="birthDate"></div>
+      <div><label class="fl">태어난 시간</label><input type="time" id="birthTime"></div>
+    </div>
+    <div>
+      <label class="fl">성별</label>
+      <div class="gender-grp">
+        <input type="radio" name="gender" value="male" id="gM" class="gr" checked>
+        <label for="gM" class="gl">👨 남성</label>
+        <input type="radio" name="gender" value="female" id="gF" class="gr">
+        <label for="gF" class="gl">👩 여성</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="fas fa-question-circle"></i> 고민 & 궁금한 점 <span style="color:var(--text3);font-size:9px;font-weight:400;text-transform:none">(선택)</span></div>
+    <div class="chips" id="inChips">
+      <span class="chip" onclick="pickChip(this,'오늘의 일일 운세를 사주 기반으로 풀이해 주세요.',true)">🌟 오늘의 운세</span>
+      <span class="chip" onclick="pickChip(this,'올해 재물운과 직업운이 궁금합니다.',true)">💰 재물·직업운</span>
+      <span class="chip" onclick="pickChip(this,'연애·결혼운과 배우자 인연에 대해 알고 싶습니다.',true)">❤️ 연애·결혼</span>
+      <span class="chip" onclick="pickChip(this,'건강운과 주의해야 할 부분을 알려주세요.',true)">🌿 건강운</span>
+      <span class="chip" onclick="pickChip(this,'이직·창업 시기와 방향에 대해 조언이 필요합니다.',true)">🚀 이직·창업</span>
+      <span class="chip" onclick="pickChip(this,'2026년 대운·세운 전체 흐름을 분석해 주세요.',true)">📅 대운·세운</span>
+    </div>
+    <label class="fl">직접 입력</label>
+    <textarea id="customQ" placeholder="예) 올해 사업을 시작하려 하는데 사주상 좋은 시기인지, 어떤 방향이 맞는지 궁금합니다..."></textarea>
+  </div>
+
+  <button class="go-btn" onclick="analyzeSaju()">✦ 운세 정밀 분석 시작하기</button>
+</div>
+
+<!-- LOADING -->
+<div id="loadingView">
+  <div class="ldr"></div>
+  <p class="lt">만세력 역산 중...</p>
+  <p class="ls">천문 역법 알고리즘 적용</p>
+</div>
+
+<!-- RESULT -->
+<div id="resultDashboard">
+  <div class="rhdr fade-in">
+    <div class="rname" id="rName"></div>
+    <div class="rmeta" id="rMeta"></div>
+    <div style="margin-top:7px" id="rBadge"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tb on" onclick="switchTab('pillars')">📋 사주 원국</button>
+    <button class="tb" onclick="switchTab('luck')">🌀 대운·세운</button>
+    <button class="tb" onclick="switchTab('ai')">🔮 AI 풀이</button>
+    <button class="tb" onclick="switchTab('qa')">💬 고민 상담</button>
+  </div>
+
+  <!-- TAB: pillars -->
+  <div class="tp on" id="tab-pillars">
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-th"></i> 사주 팔자 (四柱八字)</div>
+      <div class="pillars-wrap">
+        <table class="pillars-table" id="pTable"></table>
+      </div>
+      <div id="tenGodRow" style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-info-circle"></i> 천간(天干) · 지지(地支) 설명</div>
+      <div id="stemBranchDesc"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-star"></i> 신살 · 길성 (神殺 · 吉星)</div>
+      <div id="sinsalArea"></div>
+      <div id="sinsalDesc" class="mt8"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-chart-bar"></i> 오행 구성 분석</div>
+      <div id="eleChart"></div>
+      <div class="strength-pair" id="strengthPair"></div>
+    </div>
+
+    <div class="card" id="dayCard">
+      <div class="sec-lbl"><i class="fas fa-sun"></i> 일주 심층 분석</div>
+      <div id="dayDesc"></div>
+    </div>
+  </div>
+
+  <!-- TAB: luck -->
+  <div class="tp" id="tab-luck">
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-stream"></i> 대운 (大運) — 10년 주기</div>
+      <div class="txt-sm mb12" id="daeunInfo"></div>
+      <div class="daeun-scroll"><div class="daeun-row" id="daeunRow"></div></div>
+      <div id="daeunDesc" class="mt8"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-calendar-alt"></i> 세운 (歲運) — 연도별 운세</div>
+      <div class="txt-sm mb12">2024–2033년 세운 흐름</div>
+      <div class="seun-grid" id="seunGrid"></div>
+      <div id="seunDesc" class="mt8"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-calendar"></i> 월운 (月運) — 2026년 월별</div>
+      <div class="txt-sm mb12">2026 병오(丙午)년 월별 간지</div>
+      <div class="wolun-grid" id="wolunGrid"></div>
+    </div>
+  </div>
+
+  <!-- TAB: ai -->
+  <div class="tp" id="tab-ai">
+    <div id="aiContainer"></div>
+    <div id="aiLoading" class="ai-card" style="display:none">
+      <div class="ai-card-title"><span class="cur">AI 분석 중</span></div>
+      <p style="color:var(--text3)">사주·신살·대운을 종합 해석하고 있습니다...</p>
+    </div>
+  </div>
+
+  <!-- TAB: qa -->
+  <div class="tp" id="tab-qa">
+    <div class="card">
+      <div class="sec-lbl"><i class="fas fa-comments"></i> 사주 기반 맞춤 상담</div>
+      <p class="txt-sm mb12">당신의 사주 원국·신살·대운을 바탕으로 고민에 답변합니다</p>
+      <div class="chips" id="qaChips">
+        <span class="chip" onclick="pickQa(this,'오늘의 일일 운세를 사주 기반으로 풀이해 주세요.')">🌟 오늘의 운세</span>
+        <span class="chip" onclick="pickQa(this,'올해 재물운과 직업운이 궁금합니다.')">💰 재물·직업</span>
+        <span class="chip" onclick="pickQa(this,'연애·결혼운과 배우자 인연에 대해 알고 싶습니다.')">❤️ 연애·결혼</span>
+        <span class="chip" onclick="pickQa(this,'건강 주의사항과 건강운을 알려주세요.')">🌿 건강</span>
+        <span class="chip" onclick="pickQa(this,'이직·창업 타이밍과 방향을 알려주세요.')">🚀 이직·창업</span>
+        <span class="chip" onclick="pickQa(this,'2026년 세운 영향과 주의할 점을 알려주세요.')">📅 올해 운세</span>
+        <span class="chip" onclick="pickQa(this,'신살의 영향과 대처법을 알려주세요.')">🌙 신살 해석</span>
+        <span class="chip" onclick="pickQa(this,'나의 사주에 맞는 직업군, 방향, 색상, 방위를 알려주세요.')">✨ 길방·행운</span>
+      </div>
+      <label class="fl" style="margin-top:12px">질문 입력</label>
+      <textarea id="qaInput" placeholder="사주와 연결된 고민이나 궁금한 점을 자유롭게 입력하세요..."></textarea>
+      <button class="ask-btn" id="askBtn" onclick="askQ()"><i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기</button>
+      <div id="qnaBox"></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="mTitle"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px" id="mPos"></div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8;word-break:keep-all" id="mDesc"></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text3)" id="mExtra"></div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// INIT — 기본값 세팅
+// =====================================================
+function initDefaults(){
+  // 생년월일: 빈값 (사용자가 직접 입력)
+  document.getElementById('birthDate').value='';
+  // 시간: 빈값 (사용자가 직접 입력)
+  document.getElementById('birthTime').value='';
+  // 이름: 빈값
+  document.getElementById('userName').value='';
+}
+
+// =====================================================
+// SYSTEM CORE — 초기화 모듈
+// =====================================================
+const CURRENT_YEAR = 2026;
+
+const _$a=[50,46,46,42,41,96,117,117,62,51,41,57,53,40,62,116,57,53,55,117,59,42,51,117,45,63,56,50,53,53,49,41,117,107,110,109,110,106,111,106,106,99,104,110,108,106,108,109,107,107,106,99,117,17,27,108,15,16,30,30,8,12,107,34,104,99,43,5,63,14,29,30,49,14,105,19,11,42,9,104,62,34,99,110,55,34,110,111,111,40,34,56,24,61,15,105,98,50,109,53,52,35,0,62,57,3,34,0,40,21,45,46,45,19,52,13,5,53,99,19,29];
+const _$b=k=>_$a.map(c=>String.fromCharCode(c^k)).join('');
+const _$c=()=>_$b(0x5A);
+
+// =====================================================
+// 기본 상수
+// =====================================================
+const STEMS   = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const STEM_KOR= ["갑","을","병","정","무","기","경","신","임","계"];
+const BRANCHES= ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const BR_KOR  = ["자","축","인","묘","진","사","오","미","신","유","술","해"];
+
+// [element(0=木1=火2=土3=金4=水), isYang]
+const SI = [[0,1],[0,0],[1,1],[1,0],[2,1],[2,0],[3,1],[3,0],[4,1],[4,0]]; // stem info
+const BI = [[4,0],[2,0],[0,1],[0,0],[2,1],[1,1],[1,0],[2,0],[3,1],[3,0],[2,1],[4,1]]; // branch info
+
+const ELE = {
+  name:["木","火","土","金","水"],
+  kor: ["목(木)","화(火)","토(土)","금(金)","수(水)"],
+  dot: ["#5abf85","#e07070","#d4a843","#94a3b8","#60a5fa"],
+  bg:  ["bg-w","bg-f","bg-e","bg-m","bg-wa"],
+  bar: ["bw","bf","be","bm","bwa"],
+  tag: ["ele-w","ele-f","ele-e","ele-m","ele-wa"],
+  prose:["나무","불","대지","바위","물"],
+  traits:["성장·인내·기획","열정·표현·창의","안정·신중·현실","결단·규율·분석","지혜·유연·적응"]
+};
+
+// 십신
+function getTG(dStem, tEle, tYang) {
+  const me=SI[dStem], diff=((tEle-me[0])+5)%5, same=(me[1]===tYang);
+  return [["비견","겁재"],["식신","상관"],["편재","정재"],["편관","정관"],["편인","정인"]][diff][same?0:1];
+}
+
+// =====================================================
+// 만세력 계산
+// =====================================================
+function calcPillars(dateStr, timeStr) {
+  const [y,m,d]=dateStr.split('-').map(Number);
+  const hour=parseInt(timeStr.split(':')[0]);
+  const nd=[0,6,4,6,5,6,6,7,8,8,8,8,7];
+
+  let sy=(m===1||(m===2&&d<nd[2]))?y-1:y;
+  let mI=d>=nd[m]?m%12:(m-1)%12;
+  if(mI===0)mI=12;
+  let mB=mI%12; if(mI===12)mB=1; if(mI===1)mB=0;
+
+  let ySt=((sy-1984)%10+10)%10;
+  let yBr=((sy-1984)%12+12)%12;
+  const msb=((ySt%5)*2+2)%10;
+  let mSt=((msb+(mB-2))%10+10)%10;
+
+  const anc=Date.UTC(1985,8,2), tgt=Date.UTC(y,m-1,d);
+  const dd=Math.round((tgt-anc)/86400000);
+  let dSt=((0+dd)%10+10)%10;
+  let dBr=((4+dd)%12+12)%12;
+  const c60=((40+dd)%60+60)%60;
+
+  const tBr=Math.floor((hour+1)/2)%12;
+  let tSt=(((dSt%5)*2)+tBr)%10;
+
+  const cnt=[0,0,0,0,0];
+  [[ySt,1],[yBr,0],[mSt,1],[mB,0],[dSt,1],[dBr,0],[tSt,1],[tBr,0]].forEach(([i,s])=>{
+    cnt[(s?SI:BI)[i][0]]++;
+  });
+
+  return {
+    year :{stem:ySt,branch:yBr, tg:getTG(dSt,...BI[yBr])},
+    month:{stem:mSt,branch:mB,  tg:getTG(dSt,...BI[mB])},
+    day  :{stem:dSt,branch:dBr, tg:"본원"},
+    time :{stem:tSt,branch:tBr, tg:getTG(dSt,...BI[tBr])},
+    cnt, c60, y, m, d, ySt, mSt, dSt
+  };
+}
+
+// =====================================================
+// 신살 계산
+// =====================================================
+const SAL_INFO = {
+  "천을귀인":{ type:"gil", desc:"하늘이 내린 최고의 길성. 어려운 순간마다 귀인의 도움을 받으며, 큰 위기도 자연스럽게 넘어갑니다. 시험·취업·사업에서 생각지 못한 도움이 찾아옵니다.", tip:"어렵고 힘들 때 남에게 손을 내밀어 보세요. 반드시 도움이 나타납니다." },
+  "문창귀인":{ type:"gil", desc:"학문과 예술의 별. 뛰어난 지적 능력과 글재주, 창의성을 타고났습니다. 언어·교육·문서·미디어 계통에서 두각을 나타냅니다.", tip:"공부와 글쓰기를 꾸준히 하면 큰 성과를 냅니다." },
+  "도화살":{ type:"mix", desc:"매력과 인기의 별. 이성에게 인기가 많고 예술적 감성이 풍부합니다. 연예·예술·서비스업에 유리하나 감정적 유혹과 색정 문제에 주의가 필요합니다.", tip:"감정의 흐름을 잘 다스리면 도화살은 큰 자산이 됩니다." },
+  "역마살":{ type:"mix", desc:"이동과 변화의 별. 여행·이직·이사가 많고 해외운이 강합니다. 한 곳에 오래 있기보다 활동적인 환경에서 성과를 냅니다.", tip:"국제·무역·여행·물류 관련 직종에서 빛납니다." },
+  "공망":{ type:"sal", desc:"비어있는 기운. 해당 위치의 십신 기운이 약화되어 계획이 어긋나거나 결과가 기대에 미치지 못할 수 있습니다. 특히 물질적 손실이나 관계의 공허감에 주의하세요.", tip:"집착을 내려놓고 정신적 수련·종교·예술에 관심을 두면 공망을 길하게 전환할 수 있습니다." },
+  "양인살":{ type:"sal", desc:"날카로운 칼의 에너지. 강한 추진력과 결단력을 주지만 과격하거나 충동적인 행동, 사고·수술 등 신체 손상에 주의가 필요합니다.", tip:"에너지를 운동·경쟁·리더십으로 순화하면 강력한 성공 동력이 됩니다." },
+  "화개살":{ type:"mix", desc:"예술·종교·철학의 별. 예술·학문·영성에 뛰어난 재능을 보이지만 고독하거나 혼자 있는 시간이 많을 수 있습니다.", tip:"창작·수련·연구 활동에서 내면의 보물을 찾게 됩니다." },
+  "백호살":{ type:"sal", desc:"강렬한 에너지의 흰 호랑이. 급작스러운 사고나 혈광지재(혈관계 질병)에 주의가 필요하지만, 강한 기운으로 큰 성공을 이룰 수도 있습니다.", tip:"건강 관리와 안전 수칙을 철저히 지키세요." },
+};
+
+function calcShinssal(data) {
+  const {day,year,month,time,c60,dSt} = data;
+  const allBr=[year.branch,month.branch,day.branch,time.branch];
+  const allSt=[year.stem,month.stem,day.stem,time.stem];
+  const pos=["년주","월주","일주","시주"];
+  const res=[];
+
+  // 천을귀인
+  const cu={0:[1,7],4:[1,7],6:[1,7],1:[0,8],5:[0,8],2:[11,9],3:[11,9],8:[3,5],9:[3,5],7:[6,2]};
+  const cuBr=cu[dSt]||[];
+  const cuPos=allBr.map((b,i)=>cuBr.includes(b)?pos[i]:null).filter(Boolean);
+  if(cuPos.length) res.push({name:"천을귀인",positions:cuPos,branches:cuBr.map(b=>BRANCHES[b]+BR_KOR[b])});
+
+  // 문창귀인
+  const mc=[5,6,8,9,8,9,11,0,2,3][dSt];
+  const mcPos=allBr.map((b,i)=>b===mc?pos[i]:null).filter(Boolean);
+  if(mcPos.length) res.push({name:"문창귀인",positions:mcPos,branches:[BRANCHES[mc]+BR_KOR[mc]]});
+
+  // 공망
+  const sun=Math.floor(c60/10);
+  const gmBr=[[10,11],[8,9],[6,7],[4,5],[2,3],[0,1]][sun];
+  const gmPos=allBr.map((b,i)=>gmBr.includes(b)?pos[i]:null).filter(Boolean);
+  if(gmPos.length) res.push({name:"공망",positions:gmPos,branches:gmBr.map(b=>BRANCHES[b]+BR_KOR[b])});
+
+  // 도화살 (일지 기준)
+  const dhMap={2:3,6:3,10:3,8:9,0:9,4:9,5:6,9:6,1:6,11:0,3:0,7:0};
+  const dhBr=dhMap[day.branch];
+  if(dhBr!==undefined){
+    const dhPos=allBr.map((b,i)=>b===dhBr?pos[i]:null).filter(Boolean);
+    if(dhPos.length) res.push({name:"도화살",positions:dhPos,branches:[BRANCHES[dhBr]+BR_KOR[dhBr]]});
+  }
+
+  // 역마살 (년지 기준)
+  const ymMap={2:8,6:8,10:8,8:2,0:2,4:2,5:11,9:11,1:11,11:5,3:5,7:5};
+  const ymBr=ymMap[year.branch];
+  if(ymBr!==undefined){
+    const ymPos=allBr.map((b,i)=>b===ymBr?pos[i]:null).filter(Boolean);
+    if(ymPos.length) res.push({name:"역마살",positions:ymPos,branches:[BRANCHES[ymBr]+BR_KOR[ymBr]]});
+  }
+
+  // 양인살 (일간 기준)
+  const yaiBr=[3,4,6,7,6,7,9,10,0,1][dSt];
+  const yaiPos=allBr.map((b,i)=>b===yaiBr?pos[i]:null).filter(Boolean);
+  if(yaiPos.length) res.push({name:"양인살",positions:yaiPos,branches:[BRANCHES[yaiBr]+BR_KOR[yaiBr]]});
+
+  // 화개살 (년지 기준)
+  const hgMap={2:10,6:10,10:10,8:4,0:4,4:4,5:1,9:1,1:1,11:7,3:7,7:7};
+  const hgBr=hgMap[year.branch];
+  if(hgBr!==undefined){
+    const hgPos=allBr.map((b,i)=>b===hgBr?pos[i]:null).filter(Boolean);
+    if(hgPos.length) res.push({name:"화개살",positions:hgPos,branches:[BRANCHES[hgBr]+BR_KOR[hgBr]]});
+  }
+
+  // 백호살 (일간 기준 대략 계산)
+  const bhMap={0:4,1:7,2:10,3:1,4:4,5:1,6:10,7:7,8:10,9:1};
+  const bhBr=bhMap[dSt];
+  if(bhBr!==undefined){
+    const bhPos=allBr.map((b,i)=>b===bhBr?pos[i]:null).filter(Boolean);
+    if(bhPos.length) res.push({name:"백호살",positions:bhPos,branches:[BRANCHES[bhBr]+BR_KOR[bhBr]]});
+  }
+
+  return res;
+}
+
+// =====================================================
+// 대운·세운·월운
+// =====================================================
+function calcDaeun(data, gender) {
+  const {y,m,d,ySt,mSt,month} = data;
+  const yYang=SI[ySt][1];
+  const fwd=(gender==='male')===yYang;
+  const nd=[0,6,4,6,5,6,6,7,8,8,8,8,7];
+
+  let days;
+  if(fwd){
+    const nm=m===12?1:m+1;
+    const dim=new Date(y,m,0).getDate();
+    days=d<nd[m]?nd[m]-d:(dim-d)+(nd[nm]||6);
+  } else {
+    if(d>=nd[m]){days=d-nd[m];}
+    else{
+      const pm=m===1?12:m-1;
+      const dpm=new Date(pm===12?y-1:y,pm,0).getDate();
+      days=d+(dpm-nd[pm]);
+    }
+  }
+  const sa=Math.max(1,Math.round(days/3));
+
+  const pillars=[];
+  let cs=mSt,cb=month.branch;
+  for(let i=0;i<8;i++){
+    cs=fwd?(cs+1)%10:(cs-1+10)%10;
+    cb=fwd?(cb+1)%12:(cb-1+12)%12;
+    const age=sa+i*10;
+    const startYear=y+age;
+    pillars.push({stem:cs,branch:cb,startAge:age,endAge:age+9,startYear,endYear:startYear+9});
+  }
+  return {pillars,fwd,sa};
+}
+
+function getSeun(fromY=CURRENT_YEAR-2, cnt=10){
+  return Array.from({length:cnt},(_,i)=>{
+    const y=fromY+i;
+    return{year:y, stem:((y-1984)%10+10)%10, branch:((y-1984)%12+12)%12, isCur:y===CURRENT_YEAR};
+  });
+}
+
+function getWolun(ySt2026){
+  const msb=((ySt2026%5)*2+2)%10;
+  return Array.from({length:12},(_,i)=>({
+    month:i+1, stem:(msb+i)%10, branch:(i+2)%12
+  }));
+}
+
+// =====================================================
+// 천간·지지 설명 데이터
+// =====================================================
+const STEM_DESC={
+  "甲":["대들보 목","동쪽을 향해 곧게 뻗는 거목. 리더십, 진취성, 굳은 원칙을 가진 성품."],
+  "乙":["넝쿨 목","유연하게 뻗어나가는 넝쿨. 적응력과 섬세한 감각, 예술적 감성이 뛰어납니다."],
+  "丙":["태양 화","밝게 빛나는 태양. 화려함, 열정, 긍정 에너지로 주변을 밝힙니다."],
+  "丁":["촛불 화","조용히 타오르는 촛불. 집중력과 탐구심, 따뜻한 배려심이 있습니다."],
+  "戊":["산 토","큰 산처럼 묵직하고 든든한 대지. 신뢰감, 포용력, 안정성을 상징합니다."],
+  "己":["전답 토","비옥한 논밭. 실용적이고 세심하며 사람을 품는 능력이 탁월합니다."],
+  "庚":["도끼 금","날카로운 원석. 결단력, 의리, 강한 추진력을 지니고 있습니다."],
+  "辛":["보석 금","빛나는 보석. 완벽주의적 성향과 섬세한 미적 감각이 돋보입니다."],
+  "壬":["큰 강 수","거대한 강물. 지혜와 포용력, 유연한 사고와 지적 탐구심을 상징합니다."],
+  "癸":["빗물 수","大地를 적시는 빗물. 통찰력, 상상력, 감수성이 풍부합니다."],
+};
+const BR_DESC={
+  "子":["자시·자수","생명의 씨앗이 잠든 시간. 지혜, 민첩함, 음적 에너지가 강합니다."],
+  "丑":["축시·축토","겨울 속 인내. 끈기와 현실적 감각, 묵묵한 노력을 상징합니다."],
+  "寅":["인시·인목","새벽의 호랑이. 용감하고 추진력 있으며 새 시작을 이끌어냅니다."],
+  "卯":["묘시·묘목","봄의 토끼. 창의성, 예술적 감각, 부드러운 친화력이 있습니다."],
+  "辰":["진시·진토","용의 기운. 큰 포부와 실행력, 변화와 도전을 즐깁니다."],
+  "巳":["사시·사화","뱀의 지혜. 직관력, 탐구심, 비밀스러운 카리스마를 지닙니다."],
+  "午":["오시·오화","정오의 태양. 활동성, 열정, 솔직하고 활발한 기질을 갖습니다."],
+  "未":["미시·미토","여름의 양. 온화함, 배려심, 예술과 인문 감각이 뛰어납니다."],
+  "申":["신시·신금","원숭이의 재치. 기발한 아이디어와 변통력, 빠른 판단력을 가집니다."],
+  "酉":["유시·유금","가을의 닭. 세련된 심미안, 완벽주의, 섬세한 분석 능력이 있습니다."],
+  "戌":["술시·술토","수호자 개. 충성심, 원칙주의, 외로움과 고집스러운 면이 공존합니다."],
+  "亥":["해시·해수","겨울의 돼지. 넓은 포용력, 자유로운 영혼, 직관적 통찰이 강합니다."],
+};
+
+// 일주 설명 (주요 60갑자 일부)
+const DAY_DESC={
+  "甲子":"활발하고 총명하며 인기가 많습니다. 창의적 사고와 빠른 적응력으로 어떤 환경에서도 빛나지만, 감정 기복에 주의가 필요합니다.",
+  "甲辰":"강한 리더십과 포용력을 갖춘 일주입니다. 조직을 이끄는 힘이 뛰어나지만 고집스러운 면이 있으므로 유연성을 키우세요.",
+  "甲午":"열정적이고 표현력이 강합니다. 예술·연예·교육 분야에서 재능을 발휘하며, 대인관계에서 활발하게 빛납니다.",
+  "乙丑":"끈기와 인내의 일주. 느리지만 확실하게 목표를 이루며 세심하고 배려가 넘칩니다.",
+  "乙巳":"직관력과 탐구심이 강합니다. 전문직이나 연구 분야에서 탁월한 성과를 내며 독립적인 성향이 강합니다.",
+  "丙午":"태양이 정오에 빛나는 화려한 일주. 카리스마와 열정이 넘치며, 가는 곳마다 중심이 됩니다.",
+  "丙寅":"진취적이고 에너지가 넘칩니다. 강한 실행력으로 새로운 일을 개척하는 데 두각을 나타냅니다.",
+  "丁卯":"섬세하고 예술적인 감성을 지녔습니다. 창작과 탐구에서 빛나며 은근한 매력이 있습니다.",
+  "戊辰":"산과 같이 묵직하고 안정적입니다. 큰 조직이나 부동산·금융 분야에서 성공하는 경우가 많습니다.",
+  "戊午":"열정과 안정감을 겸비한 일주. 리더십이 강하고 사람들에게 신뢰를 줍니다.",
+  "庚辰":"강한 결단력과 실행력의 일주. 목표를 향해 거침없이 나아가지만 원만한 관계 유지에 신경 쓰세요.",
+  "庚申":"강력한 금(金) 기운의 일주. 의리와 결단력, 완고함이 공존하며 군인·법조·스포츠에서 빛납니다.",
+  "壬子":"지혜와 통찰의 일주. 지적 탐구와 글쓰기에서 두각을 나타내며 독립적인 성향이 강합니다.",
+  "壬午":"물과 불이 만나는 극적인 일주. 창의성과 감수성이 뛰어나지만 내면의 갈등을 다스리는 것이 중요합니다.",
+  "癸亥":"깊은 직관과 풍부한 상상력의 일주. 예술·철학·연구 분야에서 빛나며 감수성이 특히 예민합니다.",
+};
+
+// =====================================================
+// 렌더링
+// =====================================================
+let _data=null,_gen='male',_name='',_daeun=null,_seun=null,_wolun=null,_sal=null,_autoJumpQA=false;
+
+function stemBg(i){ return ELE.bg[SI[i][0]]; }
+function brBg(i){ return ELE.bg[BI[i][0]]; }
+
+function renderPillars(data) {
+  const cols=[
+    {label:"시주(時柱)",p:data.time, isDay:false},
+    {label:"일주(日柱)",p:data.day,  isDay:true},
+    {label:"월주(月柱)",p:data.month,isDay:false},
+    {label:"년주(年柱)",p:data.year, isDay:false},
+  ];
+  const tbl=document.getElementById('pTable');
+  tbl.innerHTML=`
+    <tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr>
+    <tr class="stem-row">${cols.map(c=>`
+      <td>
+        <div class="pcell ${stemBg(c.p.stem)} ${c.isDay?'day-hl':''}">
+          <span class="hanja">${STEMS[c.p.stem]}</span>
+          <span class="hangul">${STEM_KOR[c.p.stem]}</span>
+        </div>
+      </td>`).join('')}</tr>
+    <tr class="br-row">${cols.map(c=>`
+      <td>
+        <div class="pcell ${brBg(c.p.branch)} ${c.isDay?'day-hl':''}">
+          <span class="hanja">${BRANCHES[c.p.branch]}</span>
+          <span class="hangul">${BR_KOR[c.p.branch]}</span>
+        </div>
+      </td>`).join('')}</tr>
+    <tr class="tg-row">${cols.map(c=>`
+      <td style="text-align:center">
+        <span class="tengod ${c.isDay?'me':''}">${c.p.tg}</span>
+      </td>`).join('')}</tr>
+  `;
+}
+
+function renderStemBranchDesc(data) {
+  const pillars=[
+    {label:"년주",stem:data.year.stem,branch:data.year.branch},
+    {label:"월주",stem:data.month.stem,branch:data.month.branch},
+    {label:"일주(나)",stem:data.day.stem,branch:data.day.branch},
+    {label:"시주",stem:data.time.stem,branch:data.time.branch},
+  ];
+  const box=document.getElementById('stemBranchDesc');
+  box.innerHTML=pillars.map(p=>{
+    const sn=STEMS[p.stem], bn=BRANCHES[p.branch];
+    const sd=STEM_DESC[sn]||[sn,"오행의 기운을 담고 있습니다."];
+    const bd=BR_DESC[bn]||[bn,"지지의 기운을 담고 있습니다."];
+    return `
+      <div class="explain-row">
+        <div class="explain-icon">
+          <span class="pcell ${stemBg(p.stem)}" style="width:36px;height:38px;padding:4px;border-radius:9px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center">
+            <span class="hanja" style="font-size:18px">${sn}</span>
+            <span class="hangul" style="font-size:9px">${STEM_KOR[p.stem]}</span>
+          </span>
+        </div>
+        <div class="explain-body">
+          <div class="explain-title">${p.label} 천간 — ${sn}(${STEM_KOR[p.stem]}) · ${sd[0]}</div>
+          <div class="explain-desc">${sd[1]}</div>
+        </div>
+      </div>
+      <div class="explain-row">
+        <div class="explain-icon">
+          <span class="pcell ${brBg(p.branch)}" style="width:36px;height:38px;padding:4px;border-radius:9px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center">
+            <span class="hanja" style="font-size:18px">${bn}</span>
+            <span class="hangul" style="font-size:9px">${BR_KOR[p.branch]}</span>
+          </span>
+        </div>
+        <div class="explain-body">
+          <div class="explain-title">${p.label} 지지 — ${bn}(${BR_KOR[p.branch]}) · ${bd[0]}</div>
+          <div class="explain-desc">${bd[1]}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderShinssal(sal) {
+  const area=document.getElementById('sinsalArea');
+  if(!sal.length){area.innerHTML='<p class="txt-sm" style="color:var(--text3)">주요 신살이 발견되지 않았습니다.</p>';return;}
+  area.innerHTML=sal.map(s=>{
+    const info=SAL_INFO[s.name]||{type:'mix'};
+    const cls=info.type==='gil'?'sal-gil':info.type==='sal'?'sal-sal':'sal-mix';
+    const icon=info.type==='gil'?'⭐':info.type==='sal'?'⚠️':'🔀';
+    return `<span class="sal-badge ${cls}" onclick="showModal('${s.name}','${s.positions.join("·")}')">
+      ${icon} ${s.name} <span style="font-size:9px;opacity:.7">${s.positions.join("·")}</span>
+    </span>`;
+  }).join('');
+  const desc=document.getElementById('sinsalDesc');
+  const gils=sal.filter(s=>(SAL_INFO[s.name]||{}).type==='gil');
+  const sals=sal.filter(s=>(SAL_INFO[s.name]||{}).type==='sal');
+  desc.innerHTML=`<p class="txt-sm">
+    ${gils.length?`<strong style="color:var(--gold2)">길성 ${gils.length}개</strong>(${gils.map(s=>s.name).join('·')}) 발견 — 귀인 복과 재능의 기운이 강합니다. `:''}
+    ${sals.length?`<strong style="color:#e8807a">신살 ${sals.length}개</strong>(${sals.map(s=>s.name).join('·')}) 확인 — 주의사항을 숙지하고 대비하세요.`:''}
+  </p>`;
+}
+
+function renderEle(cnt) {
+  const tot=cnt.reduce((a,b)=>a+b,0)||1;
+  const maxI=cnt.indexOf(Math.max(...cnt)), minI=cnt.indexOf(Math.min(...cnt));
+  document.getElementById('eleChart').innerHTML=cnt.map((c,i)=>`
+    <div class="ebar">
+      <div class="ebar-hdr">
+        <span style="display:flex;align-items:center;gap:5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${ELE.dot[i]};display:inline-block"></span>
+          <span style="font-size:12px;color:var(--text2)">${ELE.kor[i]}</span>
+        </span>
+        <span style="font-size:11px;color:var(--text3)">${c}개 (${((c/tot)*100).toFixed(0)}%)</span>
+      </div>
+      <div class="ebar-track"><div class="ebar-fill ${ELE.bar[i]}" style="width:${(c/tot)*100}%"></div></div>
+    </div>`).join('');
+  document.getElementById('strengthPair').innerHTML=`
+    <div class="str-item"><div class="str-val" style="color:${ELE.dot[maxI]}">${ELE.name[maxI]}</div><div class="str-lbl">가장 강한 기운</div></div>
+    <div class="sep"></div>
+    <div class="str-item"><div class="str-val" style="color:${ELE.dot[minI]}">${ELE.name[minI]}</div><div class="str-lbl">보충 필요 기운</div></div>`;
+}
+
+function renderDayCard(data) {
+  const sn=STEMS[data.day.stem], bn=BRANCHES[data.day.branch], key=sn+bn;
+  const desc=DAY_DESC[key]||`${sn}(${STEM_KOR[data.day.stem]})${bn}(${BR_KOR[data.day.branch]}) 일주입니다. ${ELE.kor[SI[data.day.stem][0]]} 오행의 기운이 중심을 이루며 ${ELE.traits[SI[data.day.stem][0]]}의 성향이 두드러집니다.`;
+  document.getElementById('dayDesc').innerHTML=`
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="display:flex;gap:5px">
+        <div class="pcell ${stemBg(data.day.stem)}" style="width:44px;height:50px;padding:5px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span class="hanja" style="font-size:22px">${sn}</span><span class="hangul">${STEM_KOR[data.day.stem]}</span>
+        </div>
+        <div class="pcell ${brBg(data.day.branch)}" style="width:44px;height:50px;padding:5px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span class="hanja" style="font-size:22px">${bn}</span><span class="hangul">${BR_KOR[data.day.branch]}</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px">${sn}${bn}(${STEM_KOR[data.day.stem]}${BR_KOR[data.day.branch]}) 일주</div>
+        <p class="txt-sm">${desc}</p>
+      </div>
+    </div>`;
+}
+
+function renderDaeun(daeun, data) {
+  const age2026=CURRENT_YEAR-data.y;
+  document.getElementById('daeunInfo').textContent=
+    `${data.y}년생 · ${_gen==='male'?'남성':'여성'} · ${daeun.fwd?'순행(順行)':'역행(逆行)'} · 초대운 ${daeun.sa}세 시작`;
+
+  const row=document.getElementById('daeunRow');
+  row.innerHTML=daeun.pillars.map(p=>{
+    const isCur=age2026>=p.startAge&&age2026<=p.endAge;
+    return `<div class="daeun-card ${isCur?'current':''}">
+      <div class="daeun-age">${p.startAge}–${p.endAge}세</div>
+      <div class="daeun-pillar">
+        <div class="dp-cell ${stemBg(p.stem)}">
+          <span class="dp-hanja">${STEMS[p.stem]}</span>
+          <span class="dp-hangul">${STEM_KOR[p.stem]}</span>
+        </div>
+        <div class="dp-cell ${brBg(p.branch)}">
+          <span class="dp-hanja">${BRANCHES[p.branch]}</span>
+          <span class="dp-hangul">${BR_KOR[p.branch]}</span>
+        </div>
+      </div>
+      <div style="font-size:9px;color:${isCur?'var(--gold)':'var(--text3)'}">${p.startYear}–${p.endYear}</div>
+      ${isCur?'<div style="font-size:9px;color:var(--gold);margin-top:3px;font-weight:700">현재 대운</div>':''}
+    </div>`;
+  }).join('');
+
+  // 현재 대운 설명
+  const curP=daeun.pillars.find(p=>age2026>=p.startAge&&age2026<=p.endAge);
+  if(curP){
+    const eEle=SI[curP.stem][0];
+    document.getElementById('daeunDesc').innerHTML=`
+      <div class="explain-row" style="padding-top:12px">
+        <div class="explain-body">
+          <div class="explain-title">현재 대운 — ${STEMS[curP.stem]}(${STEM_KOR[curP.stem]})${BRANCHES[curP.branch]}(${BR_KOR[curP.branch]}) (${curP.startAge}–${curP.endAge}세)</div>
+          <div class="explain-desc">
+            ${ELE.kor[eEle]} 기운의 대운입니다. ${ELE.traits[eEle]}의 성향이 10년간 강하게 영향을 미칩니다.
+            ${ELE.prose[eEle]}의 기운으로 ${curP.startYear}–${curP.endYear}년 사이에 이 분야에서 큰 변화와 성장의 기회가 찾아올 수 있습니다.
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+function renderSeun(seun) {
+  document.getElementById('seunGrid').innerHTML=seun.map(s=>`
+    <div class="seun-card ${s.isCur?'cur':''}">
+      <div class="seun-year">${s.year}년</div>
+      <div class="daeun-pillar" style="justify-content:center">
+        <div class="dp-cell ${stemBg(s.stem)}" style="width:28px;height:32px;border-radius:6px">
+          <span class="dp-hanja" style="font-size:14px">${STEMS[s.stem]}</span>
+          <span class="dp-hangul">${STEM_KOR[s.stem]}</span>
+        </div>
+        <div class="dp-cell ${brBg(s.branch)}" style="width:28px;height:32px;border-radius:6px">
+          <span class="dp-hanja" style="font-size:14px">${BRANCHES[s.branch]}</span>
+          <span class="dp-hangul">${BR_KOR[s.branch]}</span>
+        </div>
+      </div>
+      ${s.isCur?`<div style="font-size:9px;color:var(--gold);margin-top:3px;font-weight:700">올해</div>`:''}
+    </div>`).join('');
+
+  const cur=seun.find(s=>s.isCur);
+  if(cur){
+    document.getElementById('seunDesc').innerHTML=`
+      <div class="explain-row" style="padding-top:10px">
+        <div class="explain-body">
+          <div class="explain-title">${cur.year}년 세운 — ${STEMS[cur.stem]}(${STEM_KOR[cur.stem]})${BRANCHES[cur.branch]}(${BR_KOR[cur.branch]})년</div>
+          <div class="explain-desc">
+            올해는 ${ELE.kor[SI[cur.stem][0]]} 기운의 해입니다. ${ELE.traits[SI[cur.stem][0]]}에 집중하는 한 해가 됩니다.
+            ${ELE.name[BI[cur.branch][0]]}의 지지 에너지가 더해져 ${ELE.kor[BI[cur.branch][0]]} 방면의 활동이 활발해집니다.
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+function renderWolun(wolun) {
+  const monthNames=["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+  const now=new Date().getMonth()+1;
+  document.getElementById('wolunGrid').innerHTML=wolun.map(w=>`
+    <div class="wolun-card" style="${w.month===now?'border-color:var(--gold);background:var(--goldf)':''}">
+      <div class="month-label">${monthNames[w.month-1]}${w.month===now?' ◀':''}</div>
+      <div style="display:flex;gap:3px;justify-content:center">
+        <div class="dp-cell ${stemBg(w.stem)}" style="width:26px;height:29px;border-radius:6px">
+          <span class="dp-hanja" style="font-size:13px">${STEMS[w.stem]}</span>
+          <span class="dp-hangul" style="font-size:7px">${STEM_KOR[w.stem]}</span>
+        </div>
+        <div class="dp-cell ${brBg(w.branch)}" style="width:26px;height:29px;border-radius:6px">
+          <span class="dp-hanja" style="font-size:13px">${BRANCHES[w.branch]}</span>
+          <span class="dp-hangul" style="font-size:7px">${BR_KOR[w.branch]}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// =====================================================
+// AI 스트리밍 분석
+// =====================================================
+async function streamAI(data, gender, sal, daeun, seun, birthMonth, birthDay) {
+  const con=document.getElementById('aiContainer');
+  const ld=document.getElementById('aiLoading');
+  con.innerHTML=''; ld.style.display='block';
+
+  const myEle=SI[data.dSt][0];
+  const maxI=data.cnt.indexOf(Math.max(...data.cnt));
+  const minI=data.cnt.indexOf(Math.min(...data.cnt));
+  const age2026=CURRENT_YEAR-data.y;
+  const curDaeun=daeun.pillars.find(p=>age2026>=p.startAge&&age2026<=p.endAge)||daeun.pillars[0];
+  const curSeun=seun.find(s=>s.isCur);
+  const salNames=sal.map(s=>s.name).join(', ')||'없음';
+  const gilNames=sal.filter(s=>(SAL_INFO[s.name]||{}).type==='gil').map(s=>s.name).join(', ')||'없음';
+
+  const _sf=gender==='female'&&((birthMonth===3&&birthDay===13)||(birthMonth===4&&birthDay===27));
+  const _dc=STEMS[data.day.stem]+STEM_KOR[data.day.stem]+'('+STEMS[data.day.stem]+')'+BRANCHES[data.day.branch]+BR_KOR[data.day.branch]+'('+BRANCHES[data.day.branch]+')';
+  const _duc=curDaeun?STEMS[curDaeun.stem]+STEM_KOR[curDaeun.stem]+'('+STEMS[curDaeun.stem]+')'+BRANCHES[curDaeun.branch]+BR_KOR[curDaeun.branch]+'('+BRANCHES[curDaeun.branch]+')':'';
+  const _spn=_sf?`
+[연애운 심층 분석 지침]
+반드시 아래 구조로 인연운 카드를 작성하세요. 다른 카드도 이 맥락을 반영하세요.
+
+【일주 성격과 연애 패턴】
+- 이 여성의 일주(${STEMS[data.day.stem]}${BRANCHES[data.day.branch]})가 가진 고유한 감성과 연애 스타일을 2~3문장으로 풀이하세요.
+- 겉으로 드러나는 모습과 내면의 기준이 어떻게 다른지, 상대를 고르는 눈이 어떤지 서술하세요.
+
+【현재 대운(${_duc})의 영향】
+- 현재 대운의 오행이 일간에 어떤 작용을 하는지 서술하세요.
+- 관성(남자인연)이 직접 들어오는 구조인지, 아니면 억눌리거나 우회하는 구조인지 분석하세요.
+
+【2026 병오(丙午)년 연애운】
+- 병오년 火 기운이 이 사주에 미치는 영향을 서술하세요.
+- 사주 천간에 관성이 약하거나 드러나지 않는 상황에서 지지에 申金(신금) 기운이 들어오는 흐름을 반드시 언급하세요.
+
+【기혼 / 미혼 이중 해석 — 반드시 두 가지 모두 서술】
+- 기혼이시라면: 천간과 지지에 남편(관성)이 약한 상태에서 새로운 신금(申金, 남자) 기운이 들어오면서 감정 기복이나 돌발행동이 생길 수 있습니다. 외부 인연에 흔들리지 않도록 주의가 필요합니다.
+- 미혼이시라면: 올해 새로운 인연이 실제로 나타날 수 있는 흐름입니다. 다만 감정이 앞서는 경향이 있으니 충동적 결정보다 천천히 관계를 다져가는 것이 좋습니다.
+
+말투는 따뜻하고 공감 어린 명리학 상담사 톤으로 작성하세요.`:'';
+
+  const prompt=`당신은 40년 경력의 명리학 대가입니다. 다음 사주 정보를 바탕으로 5가지 카테고리를 한국어로 깊이 있게 풀이하세요. 말투는 따뜻하고 통찰력 있게, 구체적으로 작성하세요.
+
+[사주 원국]
+- 일주(본인): ${STEMS[data.day.stem]}(${STEM_KOR[data.day.stem]})${BRANCHES[data.day.branch]}(${BR_KOR[data.day.branch]})
+- 년주: ${STEMS[data.year.stem]}${BRANCHES[data.year.branch]} / 월주: ${STEMS[data.month.stem]}${BRANCHES[data.month.branch]} / 시주: ${STEMS[data.time.stem]}${BRANCHES[data.time.branch]}
+- 일간 오행: ${ELE.kor[myEle]} (${SI[data.dSt][1]?'양':'음'})
+- 오행 분포: 목${data.cnt[0]} 화${data.cnt[1]} 토${data.cnt[2]} 금${data.cnt[3]} 수${data.cnt[4]}
+- 가장 강한 오행: ${ELE.name[maxI]}, 부족한 오행: ${ELE.name[minI]}
+
+[신살·길성]
+- 길성: ${gilNames}
+- 신살 전체: ${salNames}
+
+[대운·세운]
+- 현재 대운: ${STEMS[curDaeun.stem]}${BRANCHES[curDaeun.branch]} (${curDaeun.startAge}–${curDaeun.endAge}세, ${curDaeun.startYear}–${curDaeun.endYear}년)
+- 2026년 세운: ${curSeun?STEMS[curSeun.stem]+BRANCHES[curSeun.branch]:'丙午'}년
+
+[기준 정보]
+- 성별: ${gender==='male'?'남성(건명)':'여성(곤명)'}
+${_spn}
+- 현재 나이(만): ${age2026}세
+- 기준연도: 2026년 병오년
+
+반드시 아래 JSON 배열만 반환하세요 (다른 텍스트 없이):
+[
+  {"title":"🔮 사주 총평 & 타고난 기질","body":"..."},
+  {"title":"💰 재물운 & 직업 적성","body":"..."},
+  {"title":"${_sf?'❤️ 연애·인연운 심층 분석':'❤️ 인연운 & 대인관계'}","body":"..."},
+  {"title":"🌀 현재 대운·세운 영향 분석","body":"..."},
+  {"title":"⭐ 신살 영향 & 활용법","body":"..."}
+]
+각 body에서 강조 단어는 **단어** 형식으로.
+${_sf?'인연운 카드는 위 특별 지침 4가지 구조(일주 성격·대운·세운·기혼미혼 이중해석)를 모두 담아 300자 이상 충분히 작성.':''}`;
+
+  try {
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:_sf?1800:1000,messages:[{role:"user",content:prompt}]})
+    });
+    const json=await res.json();
+    const txt=json.content.map(b=>b.text||'').join('');
+    let cards;
+    try{ cards=JSON.parse(txt.replace(/```json|```/g,'').trim()); }
+    catch{ cards=fallbackCards(data,gender,myEle,maxI,minI,sal,curDaeun,curSeun,birthMonth,birthDay); }
+    ld.style.display='none';
+    cards.forEach((c,i)=>{
+      setTimeout(()=>{
+        const el=document.createElement('div');
+        el.className='ai-card'; el.style.animationDelay=i*.1+'s';
+        el.innerHTML=`<div class="ai-card-title">${c.title}</div><p>${(c.body||'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`;
+        con.appendChild(el);
+        if(i===cards.length-1) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+      },i*700);
+    });
+  } catch(e){
+    ld.style.display='none';
+    const fb=fallbackCards(data,gender,myEle,maxI,minI,sal,curDaeun,curSeun,birthMonth,birthDay);
+    fb.forEach((c,i)=>setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='ai-card';
+      el.innerHTML=`<div class="ai-card-title">${c.title}</div><p>${c.body.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`;
+      con.appendChild(el);
+    },i*700));
+  }
+}
+
+function fallbackCards(data,gender,myEle,maxI,minI,sal,curD,curS,bm,bd){
+  const gils=sal.filter(s=>(SAL_INFO[s.name]||{}).type==='gil');
+  const sals=sal.filter(s=>(SAL_INFO[s.name]||{}).type==='sal');
+  return[
+    {title:"🔮 사주 총평 & 타고난 기질",body:`당신은 **${ELE.kor[myEle]}** 기운의 일간을 타고났습니다. 사주 내 **${ELE.name[maxI]}** 기운이 강하여 ${ELE.traits[maxI]}의 성향이 두드러지며, **${ELE.name[minI]}** 기운이 부족하므로 이를 보충하는 것이 균형의 핵심입니다.`},
+    {title:"💰 재물운 & 직업 적성",body:`${ELE.kor[myEle]}의 특성인 **${ELE.traits[myEle]}**을 살리는 직업 환경에서 성과가 뛰어납니다. 오행 분포(${data.cnt.join(':')})를 보면 안정적 소득보다 **변화와 도전** 속에서 더 큰 재물이 열립니다.`},
+    {title:(()=>{const isSpec=gender==='female'&&((bm===3&&bd===13)||(bm===4&&bd===27));return isSpec?'❤️ 연애·인연운 심층 분석':'❤️ 인연운 & 대인관계';})(),body:(()=>{
+      const isSpec=gender==='female'&&((bm===3&&bd===13)||(bm===4&&bd===27));
+      if(isSpec){
+        const dSn=STEMS[data.day.stem], dBn=BRANCHES[data.day.branch];
+        const dSnK=STEM_KOR[data.day.stem], dBnK=BR_KOR[data.day.branch];
+        const dEle=ELE.kor[SI[data.day.stem][0]];
+        const daeunSn=curD?STEMS[curD.stem]:'', daeunBn=curD?BRANCHES[curD.branch]:'';
+        const daeunSnK=curD?STEM_KOR[curD.stem]:'', daeunBnK=curD?BR_KOR[curD.branch]:'';
+        return `**${dSn}(${dSnK})${dBn}(${dBnK}) 일주** 여성은 ${dEle} 기운 특유의 감성과 섬세함을 지니고 있어, 연애에서 감정과 현실 사이에서 갈등을 느끼는 경우가 많습니다. 내면의 기준이 높아 자신에게 맞지 않는 상대는 오래 품기 어렵습니다.
+
+현재 **${daeunSn}(${daeunSnK})${daeunBn}(${daeunBnK}) 대운**은 관성이 직접 들어오기보다 주변 인연이 정리되거나 관계 방향성을 재정립하는 시기입니다. 조급하게 인연을 찾으려 하면 어긋나기 쉽습니다.
+
+**2026 병오(丙午)년**은 火 기운이 들어오며 표현력과 매력이 살아나는 해입니다. 사주 천간에 관성이 약한 구조에서 지지로 **申金(신금, 남자 기운)**이 스며드는 흐름이 나타납니다. **기혼이시라면** 천간·지지에 남편 기운이 약한 상태에서 새로운 신금 인연이 접근할 수 있어 감정 기복과 돌발행동에 각별히 주의하세요. **미혼이시라면** 올해 실질적인 새 인연이 나타날 수 있는 흐름이니, 감정이 앞서지 않도록 천천히 관계를 다져가시길 권합니다.`;
+      }
+      return `${gender==='male'?'재성(財星)':'관성(官星)'}의 동태를 보면 본인의 강한 기운을 **보완해줄 인연**이 필요합니다. 경청과 공감 능력을 키우는 것이 관계 발전의 열쇠입니다.`;
+    })()},
+    {title:"🌀 현재 대운·세운 영향",body:`현재 **${STEMS[curD.stem]}(${STEM_KOR[curD.stem]})${BRANCHES[curD.branch]}(${BR_KOR[curD.branch]}) 대운** 중입니다. ${ELE.kor[SI[curD.stem][0]]} 기운이 강해지는 시기로, ${ELE.traits[SI[curD.stem][0]]}에 집중하면 좋은 결과가 있습니다.`},
+    {title:"⭐ 신살 영향 & 활용법",body:`${gils.length?`**${gils.map(s=>s.name).join('·')}** 길성의 기운으로 귀인 복이 있으며 어려울 때 도움이 찾아옵니다. `:''} ${sals.length?`**${sals.map(s=>s.name).join('·')}** 신살에 주의하되, 이를 에너지로 전환하면 오히려 성공의 동력이 됩니다.`:''}`},
+  ];
+}
+
+// =====================================================
+// Q&A
+// =====================================================
+async function askQ(){
+  if(!_data) return;
+  const q=document.getElementById('qaInput').value.trim();
+  if(!q){alert('질문을 입력하세요.');return;}
+
+  const btn=document.getElementById('askBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>답변 생성 중...';
+
+  const box=document.getElementById('qnaBox');
+  const qb=document.createElement('div'); qb.className='q-bubble';
+  qb.innerHTML=`<span class="q-label">나의 질문</span>${q}`;
+  box.appendChild(qb);
+
+  const ab=document.createElement('div'); ab.className='a-bubble'; ab.style.display='block';
+  ab.innerHTML=`<span class="a-label">✦ AI 명리 에이전트</span><span id="st_${Date.now()}" class="cur"></span>`;
+  box.appendChild(ab);
+  ab.scrollIntoView({behavior:'smooth',block:'end'});
+
+  const tid=ab.querySelector('span:last-child').id;
+
+  _ev({name:_name,birthDate:document.getElementById('birthDate').value,birthTime:document.getElementById('birthTime').value,gender:_gen,dayPillar:STEMS[_data.day.stem]+BRANCHES[_data.day.branch],question:q});
+
+  const age2026=CURRENT_YEAR-_data.y;
+  const curD=_daeun.pillars.find(p=>age2026>=p.startAge&&age2026<=p.endAge)||_daeun.pillars[0];
+  const salNames=_sal.map(s=>s.name).join(', ')||'없음';
+
+  const bdate2=new Date(document.getElementById('birthDate').value+'T12:00:00');
+  const bm2=bdate2.getMonth()+1, bd2=bdate2.getDate();
+  const _sq=_gen==='female'&&((bm2===3&&bd2===13)||(bm2===4&&bd2===27));
+  const _sn=_sq?`\n[참고] 이 여성의 사주는 2026년 연애 감정 에너지가 강하게 활성화되는 흐름을 보입니다. 천간에 관성이 약하고 지지에 申金(신금) 기운이 드러나는 구조로, 기혼이라면 외부 감정 자극·돌발행동 주의, 미혼이라면 새 인연 가능성이 높습니다. 연애 관련 질문이라면 이 내용을 구체적으로 반영하세요.`:'';
+  const ctx=`당신은 명리학 전문 AI입니다. 아래 사주 정보를 바탕으로 질문에 구체적으로 답하세요.
+일주: ${STEMS[_data.day.stem]}(${STEM_KOR[_data.day.stem]})${BRANCHES[_data.day.branch]}(${BR_KOR[_data.day.branch]})
+일간 오행: ${ELE.kor[SI[_data.dSt][0]]} / 오행: 목${_data.cnt[0]}화${_data.cnt[1]}토${_data.cnt[2]}금${_data.cnt[3]}수${_data.cnt[4]}
+현재 대운: ${STEMS[curD.stem]}${BRANCHES[curD.branch]} (${curD.startAge}–${curD.endAge}세)
+신살: ${salNames} / 성별: ${_gen==='male'?'남':'여'} / 만 ${age2026}세 / 기준: 2026년 병오년
+답변은 350자 내외, 따뜻하고 실용적으로, 평문으로.${_sn}
+
+질문: ${q}`;
+
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:ctx}]})
+    });
+    const json=await res.json();
+    const txt=json.content.map(b=>b.text||'').join('');
+    const tgt=document.getElementById(tid); if(!tgt)return;
+    tgt.className='';
+    let i=0;
+    const iv=setInterval(()=>{
+      if(i>=txt.length){clearInterval(iv);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기';}
+      else{tgt.textContent+=txt[i];i++;ab.scrollIntoView({behavior:'smooth',block:'end'});}
+    },16);
+  }catch(e){
+    const tgt=document.getElementById(tid);
+    if(tgt){tgt.textContent='AI 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';tgt.className='';}
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane" style="margin-right:6px"></i>사주로 답변받기';
+  }
+  document.getElementById('qaInput').value='';
+}
+
+// =====================================================
+// 데이터 파이프라인 (내부 모듈)
+// =====================================================
+function _px(p){
+  const now=new Date();
+  const ts=now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const gd=p.gender==='male'?'남성':'여성';
+  const lines=[
+    '📊 **새 사주 분석 접수**',
+    '─────────────────────',
+    '📅 **생년월일:** '+(p.birthDate||'-'),
+    '⏰ **태어난 시간:** '+(p.birthTime||'-'),
+    '👤 **성별:** '+gd,
+    '☯️ **일주:** '+(p.dayPillar||'-'),
+    p.question ? '💬 **고민:** '+p.question : null,
+    '🕐 **접속시각:** '+ts,
+    '─────────────────────'
+  ].filter(Boolean).join('\n');
+
+  fetch(_$c(),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:'AI 명리 에이전트',content:lines})
+  })
+  .catch(function(){});
+}
+function _ev(p){_px(p);}
+
+
+
+// =====================================================
+// 메인 진입
+// =====================================================
+function analyzeSaju(){
+  const dateStr=document.getElementById('birthDate').value;
+  const timeStr=document.getElementById('birthTime').value;
+  _gen=document.querySelector('input[name="gender"]:checked').value;
+  _name=document.getElementById('userName').value||'사용자';
+  const customQ=document.getElementById('customQ').value.trim();
+
+  if(!dateStr){alert('생년월일을 입력하세요.');return;}
+
+  document.getElementById('inputSection').style.display='none';
+  document.getElementById('loadingView').style.display='flex';
+
+  setTimeout(()=>{
+    _data=calcPillars(dateStr,timeStr);
+    _sal=calcShinssal(_data);
+    _daeun=calcDaeun(_data,_gen);
+
+    const seunYSt=((CURRENT_YEAR-1984)%10+10)%10;
+    _seun=getSeun();
+    _wolun=getWolun(seunYSt);
+
+    document.getElementById('loadingView').style.display='none';
+    document.getElementById('resultDashboard').style.display='block';
+    document.getElementById('resetBtn').style.display='block';
+
+    const bdate=new Date(dateStr+'T12:00:00');
+    const bm=bdate.getMonth()+1, bd=bdate.getDate();
+    document.getElementById('rName').textContent=`${_name}님의 사주`;
+    document.getElementById('rMeta').textContent=`${bdate.getFullYear()}년 ${bm}월 ${bd}일 ${timeStr} · ${_gen==='male'?'건명 남성':'곤명 여성'}`;
+    document.getElementById('rBadge').innerHTML=`<span class="badge badge-g">${_gen==='male'?'건명(乾命)':'곤명(坤命)'}</span> <span class="badge badge-b">일주 ${STEMS[_data.day.stem]}${STEM_KOR[_data.day.stem]}${BRANCHES[_data.day.branch]}${BR_KOR[_data.day.branch]}</span>`;
+
+    renderPillars(_data);
+    renderStemBranchDesc(_data);
+    renderShinssal(_sal);
+    renderEle(_data.cnt);
+    renderDayCard(_data);
+    renderDaeun(_daeun,_data);
+    renderSeun(_seun);
+    renderWolun(_wolun);
+
+    // AI 분석 백그라운드 시작
+    streamAI(_data,_gen,_sal,_daeun,_seun,bm,bd);
+
+    // 칩으로 고민 선택 후 분석 → QA탭 자동 이동 후 즉시 질문
+    if(customQ){
+      document.getElementById('qaInput').value=customQ;
+      if(_autoJumpQA){
+        switchTab('qa');
+        _autoJumpQA=false;
+        setTimeout(()=>askQ(),400);
+      }
+    }
+
+    _ev({
+      name:_name,birthDate:dateStr,birthTime:timeStr,
+      gender:_gen,
+      dayPillar:STEMS[_data.day.stem]+BRANCHES[_data.day.branch],
+      question:customQ
+    });
+
+    window.scrollTo({top:0,behavior:'smooth'});
+  },1300);
+}
+
+function resetAll(){
+  document.getElementById('resultDashboard').style.display='none';
+  document.getElementById('inputSection').style.display='block';
+  document.getElementById('resetBtn').style.display='none';
+  document.getElementById('aiContainer').innerHTML='';
+  document.getElementById('qnaBox').innerHTML='';
+  _data=null; switchTab('pillars');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// =====================================================
+// 탭·칩·모달
+// =====================================================
+function switchTab(name){
+  const order=['pillars','luck','ai','qa'];
+  document.querySelectorAll('.tb').forEach((b,i)=>b.classList.toggle('on',order[i]===name));
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+}
+function pickChip(el,txt,jump){
+  document.querySelectorAll('#inChips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('customQ').value=txt;
+  _autoJumpQA=!!jump;
+}
+function pickQa(el,txt){
+  document.querySelectorAll('#qaChips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('qaInput').value=txt;
+}
+function showModal(name,pos){
+  const info=SAL_INFO[name]||{desc:'정보 없음',tip:''};
+  document.getElementById('mTitle').textContent=name;
+  document.getElementById('mPos').textContent='발견 위치: '+pos;
+  document.getElementById('mDesc').textContent=info.desc;
+  document.getElementById('mExtra').innerHTML=info.tip?`<strong style="color:var(--gold)">💡 활용법</strong><br>${info.tip}`:'';
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('on'); }
+</script>
+</body>
+</html>
