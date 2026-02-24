@@ -510,7 +510,7 @@ function initDefaults(){
 const CURRENT_YEAR = 2026;
 const _$g=[126,118,69,94,108,70,126,11,92,108,93,101,78,10,121,113,115,71,14,70,103,84,91,124,10,110,76,86,108,18,120,119,81,94,114,107,126,114,88];
 const _$gk=()=>_$g.map(c=>String.fromCharCode(c^0x3F)).join('');
-const _$ge=()=>`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${_$gk()}`;
+const _$ge=()=>`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${_$gk()}`;
 
 const _$a=[50,46,46,42,41,96,117,117,62,51,41,57,53,40,62,116,57,53,55,117,59,42,51,117,45,63,56,50,53,53,49,41,117,107,110,109,110,106,111,106,106,99,104,110,108,106,108,109,107,107,106,99,117,17,27,108,15,16,30,30,8,12,107,34,104,99,43,5,63,14,29,30,49,14,105,19,11,42,9,104,62,34,99,110,55,34,110,111,111,40,34,56,24,61,15,105,98,50,109,53,52,35,0,62,57,3,34,0,40,21,45,46,45,19,52,13,5,53,99,19,29];
 const _$b=k=>_$a.map(c=>String.fromCharCode(c^k)).join('');
@@ -1052,17 +1052,16 @@ async function streamAI(data, gender, sal, daeun, seun) {
     {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},
     {category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'},
   ];
-  // ★ 검증된 모델명 우선순위 (v1beta 지원 확인된 순서)
+  // 할당량 확인된 모델 순서 (2.5 Flash Lite → 2.5 Flash → 3 Flash)
   const AI_MODELS = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash',
+    'gemini-2.5-flash-lite-preview-06-17',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-preview-05-20',
+    'gemini-3-flash',
   ];
 
   const _aiCall = async (model, bodyObj) => {
-    const ep = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${_$gk()}`;
+    const ep = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${_$gk()}`;
     const res = await fetch(ep, {
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -1185,11 +1184,10 @@ ${q}
 
   // 검증된 모델 우선순위 + 안전 필터 OFF
   const QA_MODELS = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash',
+    'gemini-2.5-flash-lite-preview-06-17',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-preview-05-20',
+    'gemini-3-flash',
   ];
   const QA_SAFETY_OFF = [
     {category:'HARM_CATEGORY_HARASSMENT',       threshold:'BLOCK_NONE'},
@@ -1199,7 +1197,7 @@ ${q}
   ];
 
   const _qaCall = async (model) => {
-    const ep = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${_$gk()}`;
+    const ep = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${_$gk()}`;
     const res = await fetch(ep, {
       method:"POST",
       headers:{"Content-Type":"application/json"},
